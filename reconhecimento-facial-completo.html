@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconhecimento Facial</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .video-container {
+            position: relative;
+            margin: 0 auto;
+            width: 640px;
+            height: 480px;
+        }
+
+        video {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transform: rotateY(180deg);
+            -webkit-transform: rotateY(180deg);
+            -moz-transform: rotateY(180deg);
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotateY(180deg);
+            -webkit-transform: rotateY(180deg);
+            -moz-transform: rotateY(180deg);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            color: #333;
+            min-height: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        input, button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .models-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .progress {
+            margin: 10px 0;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            height: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            height: 100px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reconhecimento Facial</h1>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="recognition">Reconhecimento</div>
+            <div class="tab" data-tab="register">Cadastro</div>
+            <div class="tab" data-tab="models">Modelos</div>
+        </div>
+        
+        <div class="status" id="status">Carregando modelos...</div>
+        
+        <div class="tab-content active" id="recognition-tab">
+            <div class="video-container">
+                <video id="video" autoplay muted></video>
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="register-tab">
+            <div class="video-container">
+                <video id="register-video" autoplay muted></video>
+                <canvas id="register-canvas"></canvas>
+            </div>
+            
+            <div class="controls">
+                <div class="input-group">
+                    <input type="text" id="personName" placeholder="Nome da pessoa">
+                    <button id="captureBtn">Capturar Face</button>
+                    <button id="saveBtn" disabled>Salvar</button>
+                </div>
+                
+                <div class="input-group">
+                    <button id="clearBtn">Limpar Cadastros</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="models-tab">
+            <div class="models-section">
+                <h3>Download de Modelos</h3>
+                <p>Os modelos são necessários para o funcionamento do reconhecimento facial.</p>
+                
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                
+                <div class="log" id="log"></div>
+                
+                <button id="downloadBtn">Baixar Modelos</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos da UI
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const registerVideo = document.getElementById('register-video');
+        const registerCanvas = document.getElementById('register-canvas');
+        const statusElement = document.getElementById('status');
+        const personNameInput = document.getElementById('personName');
+        const captureBtn = document.getElementById('captureBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progressBar = document.getElementById('progressBar');
+        const logElement = document.getElementById('log');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // Variáveis globais
+        let displaySize = { width: 640, height: 480 };
+        let labeledFaceDescriptors = null;
+        let capturedDescriptors = [];
+        let isModelLoaded = false;
+        let videoStream = null;
+        
+        // Configuração inicial
+        canvas.width = displaySize.width;
+        canvas.height = displaySize.height;
+        registerCanvas.width = displaySize.width;
+        registerCanvas.height = displaySize.height;
+        
+        // Navegação por abas
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Desativa todas as abas
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Ativa a aba clicada
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                // Gerencia o stream de vídeo com base na aba ativa
+                if (tabId === 'recognition' || tabId === 'register') {
+                    if (!videoStream) {
+                        startVideo();
+                    }
+                }
+            });
+        });
+        
+        // Função para atualizar o status
+        function updateStatus(message) {
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+        
+        // Função para adicionar mensagem ao log
+        function log(message) {
+            const now = new Date().toLocaleTimeString();
+            logElement.innerHTML += `<div>[${now}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Função para atualizar a barra de progresso
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            progressBar.style.width = percentage + '%';
+        }
+        
+        // 1. Carrega os modelos da face-api.js
+        async function loadModels() {
+            updateStatus('Carregando modelos...');
+            
+            try {
+                // Verifica se os modelos já foram baixados
+                const modelCheck = await fetch('./models/tiny_face_detector_model-weights_manifest.json')
+                    .then(res => res.ok)
+                    .catch(() => false);
+                
+                if (!modelCheck) {
+                    updateStatus('Modelos não encontrados. Por favor, baixe os modelos na aba "Modelos".');
+                    // Muda para a aba de modelos
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    document.querySelector('[data-tab="models"]').classList.add('active');
+                    document.getElementById('models-tab').classList.add('active');
+                    return;
+                }
+                
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('./models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
+                    faceapi.nets.faceExpressionNet.loadFromUri('./models')
+                ]);
+                
+                isModelLoaded = true;
+                updateStatus('Modelos carregados com sucesso!');
+                startVideo();
+                
+                // Carrega as faces conhecidas
+                loadKnownFaces();
+            } catch (err) {
+                console.error("Erro ao carregar modelos:", err);
+                updateStatus('Erro ao carregar modelos. Verifique o console para mais detalhes.');
+            }
+        }
+        
+        // 2. Inicia o stream da câmera
+        async function startVideo() {
+            if (videoStream) return; // Evita iniciar múltiplos streams
+            
+            updateStatus('Iniciando câmera...');
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                video.srcObject = videoStream;
+                registerVideo.srcObject = videoStream;
+                
+                video.addEventListener('play', () => {
+                    // Ajusta o tamanho do canvas para o tamanho real do vídeo
+                    displaySize = { width: video.videoWidth, height: video.videoHeight };
+                    faceapi.matchDimensions(canvas, displaySize);
+                    faceapi.matchDimensions(registerCanvas, displaySize);
+                    
+                    updateStatus('Câmera ativada. Reconhecimento facial em andamento...');
+                    
+                    // Inicia a detecção facial em um loop
+                    setInterval(detectFaces, 100);
+                });
+            } catch (err) {
+                console.error("Erro ao acessar a câmera:", err);
+                updateStatus('Não foi possível acessar sua câmera. Verifique as permissões do navegador.');
+            }
+        }
+        
+        // 3. Carrega faces conhecidas do localStorage
+        async function loadKnownFaces() {
+            try {
+                const savedFaces = localStorage.getItem('knownFaces');
+                if (savedFaces) {
+                    const facesData = JSON.parse(savedFaces);
+                    
+                    labeledFaceDescriptors = await Promise.all(
+                        facesData.map(faceData => {
+                            // Converte os arrays de volta para Float32Array
+                            const descriptors = faceData.descriptors.map(
+                                desc => new Float32Array(Object.values(desc))
+                            );
+                            return new faceapi.LabeledFaceDescriptor(faceData.label, descriptors);
+                        })
+                    );
+                    
+                    updateStatus(`${labeledFaceDescriptors.length} pessoas cadastradas.`);
+                } else {
+                    updateStatus('Nenhuma pessoa cadastrada. Use a aba "Cadastro" para adicionar faces.');
+                    labeledFaceDescriptors = [];
+                }
+            } catch (error) {
+                console.error('Erro ao carregar faces conhecidas:', error);
+                labeledFaceDescriptors = [];
+            }
+        }
+        
+        // 4. Função principal para detectar e reconhecer faces
+        async function detectFaces() {
+            if (!isModelLoaded || video.paused || video.ended || !video.readyState === 4) return;
+            
+            // Só executa a detecção na aba de reconhecimento
+            if (!document.getElementById('recognition-tab').classList.contains('active')) return;
+            
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceExpressions()
+                .withFaceDescriptors();
+            
+            // Redimensiona as detecções para o tamanho do canvas
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            
+            // Limpa o canvas antes de desenhar
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Desenha as caixas de detecção e os marcos faciais
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+            
+            // Reconhecimento facial se houver faces cadastradas
+            if (labeledFaceDescriptors && labeledFaceDescriptors.length > 0) {
+                const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+                
+                const results = resizedDetections.map(d => {
+                    return faceMatcher.findBestMatch(d.descriptor);
+                });
+                
+                results.forEach((bestMatch, i) => {
+                    const box = resizedDetections[i].detection.box;
+                    const drawBox = new faceapi.draw.DrawBox(box, { 
+                        label: bestMatch.toString(),
+                        boxColor: bestMatch.distance < 0.6 ? 'green' : 'red'
+                    });
+                    drawBox.draw(canvas);
+                });
+            }
+        }
+        
+        // 5. Captura o rosto atual para cadastro
+        async function captureFace() {
+            if (!isModelLoaded) {
+                updateStatus('Aguarde o carregamento dos modelos...');
+                return;
+            }
+            
+            updateStatus('Capturando face...');
+            
+            const detections = await faceapi.detectAllFaces(registerVideo, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceDescriptors();
+            
+            if (detections.length === 0) {
+                updateStatus('Nenhuma face detectada. Posicione seu rosto na frente da câmera.');
+                return;
+            }
+            
+            if (detections.length > 1) {
+                updateStatus('Múltiplas faces detectadas. Por favor, mantenha apenas uma face visível.');
+                return;
+            }
+            
+            // Adiciona o descritor capturado à lista
+            capturedDescriptors.push(detections[0].descriptor);
+            updateStatus(`Face ${capturedDescriptors.length} capturada! Capture mais 2 poses diferentes.`);
+            
+            // Destaca visualmente a captura
+            const ctx = registerCanvas.getContext('2d');
+            ctx.clearRect(0, 0, registerCanvas.width, registerCanvas.height);
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 3;
+            const box = faceapi.resizeResults(detections[0], displaySize).detection.box;
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            
+            // Habilita o botão de salvar após 3 capturas
+            if (capturedDescriptors.length >= 3) {
+                saveBtn.disabled = false;
+                updateStatus('3 faces capturadas! Agora digite um nome e clique em "Salvar".');
+            }
+        }
+        
+        // 6. Salva a face capturada com o nome fornecido
+        function saveFace() {
+            const personName = personNameInput.value.trim();
+            
+            if (!personName) {
+                updateStatus('Por favor, digite um nome para a pessoa.');
+                return;
+            }
+            
+            if (capturedDescriptors.length < 3) {
+                updateStatus('Capture pelo menos 3 poses diferentes antes de salvar.');
+                return;
+            }
+            
+            try {
+                // Carrega faces existentes
+                let facesData = [];
+                const savedFaces = localStorage.getItem('knownFaces');
+                if (savedFaces) {
+                    facesData = JSON.parse(savedFaces);
+                }
+                
+                // Verifica se o nome já existe
+                const existingIndex = facesData.findIndex(face => face.label === personName);
+                
+                // Prepara os dados para salvar
+                const faceData = {
+                    label: personName,
+                    descriptors: capturedDescriptors.map(d => Object.assign({}, d))
+                };
+                
+                // Atualiza ou adiciona a nova face
+                if (existingIndex >= 0) {
+                    facesData[existingIndex] = faceData;
+                } else {
+                    facesData.push(faceData);
+                }
+                
+                // Salva no localStorage
+                localStorage.setItem('knownFaces', JSON.stringify(facesData));
+                
+                // Atualiza as faces conhecidas em memória
+                const newDescriptor = new faceapi.LabeledFaceDescriptor(
+                    personName, 
+                    capturedDescriptors
+                );
+                
+                if (!labeledFaceDescriptors) labeledFaceDescriptors = [];
+                
+                // Remove a entrada anterior se existir
+                labeledFaceDescriptors = labeledFaceDescriptors.filter(d => d.label !== personName);
+                labeledFaceDescriptors.push(newDescriptor);
+                
+                // Limpa os dados de captura
+                capturedDescriptors = [];
+                personNameInput.value = '';
+                saveBtn.disabled = true;
+                registerCanvas.getContext('2d').clearRect(0, 0, registerCanvas.width, registerCanvas.height);
+                
+                updateStatus(`${personName} foi cadastrado(a) com sucesso!`);
+            } catch (error) {
+                console.error('Erro ao salvar face:', error);
+                updateStatus('Erro ao salvar. Verifique o console para mais detalhes.');
+            }
+        }
+        
+        // 7. Baixa os modelos necessários
+        async function downloadModels() {
+            downloadBtn.disabled = true;
+            log('Iniciando download dos modelos...');
+            updateProgress(0, 1);
+            
+            // Lista de modelos para download
+            const models = [
+                'tiny_face_detector_model-weights_manifest.json',
+                'tiny_face_detector_model-shard1',
+                'face_landmark_68_model-weights_manifest.json',
+                'face_landmark_68_model-shard1',
+                'face_recognition_model-weights_manifest.json',
+                'face_recognition_model-shard1',
+                'face_expression_model-weights_manifest.json',
+                'face_expression_model-shard1'
+            ];
+            
+            // URL base para os modelos
+            const baseUrl = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/';
+            
+            // Cria a pasta models se não existir
+            try {
+                await fetch('./models', { method: 'HEAD' }).catch(async () => {
+                    log('Criando pasta models...');
+                    // Tenta criar a pasta usando um arquivo vazio
+                    const blob = new Blob([''], { type: 'text/plain' });
+                    const file = new File([blob], '.keep');
+                    
+                    // Tenta usar a API File System Access (se disponível)
+                    if ('showDirectoryPicker' in window) {
+                        try {
+                            const dirHandle = await window.showDirectoryPicker();
+                            const modelsHandle = await dirHandle.getDirectoryHandle('models', { create: true });
+                            const fileHandle = await modelsHandle.getFileHandle('.keep', { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(file);
+                            await writable.close();
+                        } catch (e) {
+                            log('Não foi possível criar a pasta models automaticamente.');
+                            log('Por favor, crie manualmente uma pasta chamada "models" no mesmo diretório deste arquivo HTML.');
+                        }
+                    } else {
+                        log('Seu navegador não suporta a criação automática de pastas.');
+                        log('Por favor, crie manualmente uma pasta chamada "models" no mesmo diretório deste arquivo HTML.');
+                    }
+                });
+            } catch (e) {
+                // Ignora erros
+            }
+            
+            let completed = 0;
+            const total = models.length;
+            
+            for (const model of models) {
+                const url = baseUrl + model;
+                log(`Baixando ${model}...`);
+                
+                try {
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Erro HTTP: ${response.status}`);
+                    }
+                    
+                    const blob = await response.blob();
+                    
+                    // Cria um link para download
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = model;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                    
+                    log(`✅ ${model} baixado. Salve-o na pasta "models".`);
+                    completed++;
+                } catch (error) {
+                    log(`❌ Erro ao baixar ${model}: ${error.message}`);
+                }
+                
+                updateProgress(completed, total);
+            }
+            
+            log(`Download concluído! ${completed}/${total} arquivos baixados.`);
+            log('Por favor, mova todos os arquivos baixados para a pasta "models" no mesmo diretório deste arquivo HTML.');
+            downloadBtn.disabled = false;
+        }
+        
+        // Configura os event listeners
+        captureBtn.addEventListener('click', captureFace);
+        saveBtn.addEventListener('click', saveFace);
+        clearBtn.addEventListener('click', function() {
+            if (confirm('Tem certeza que deseja apagar todos os cadastros?')) {
+                localStorage.removeItem('knownFaces');
+                labeledFaceDescriptors = [];
+                updateStatus('Todos os cadastros foram removidos!');
+            }
+        });
+        downloadBtn.addEventListener('click', downloadModels);
+        
+        // Inicia a aplicação
+        loadModels();
+    </script>
+</body>
+</html>
